@@ -19,6 +19,7 @@ public class MapGen : MonoBehaviour {
 	private Dictionary<string, int> setTiles = new();
 	private Dictionary<string, int> oldTileSupCounts = new();
 	private Dictionary<string, (string, string)[]> facingDirections = new();
+	private Dictionary<string, Dictionary<string, int>> tileWeights = new();
 
 	enum TT { // Tile Type
 		Grass,
@@ -123,6 +124,16 @@ public class MapGen : MonoBehaviour {
 			new(TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Grass, GetTile(221), "Grass-Shore Tip Bottom Right"),
 		};
 
+		tileWeights = new Dictionary<string, Dictionary<string, int>> {
+			{ "default", new Dictionary<string, int> {
+				{ "Water Normal", 10 },
+				{ "Grass Blank", 10 },
+			}},
+			{ "mountain", new Dictionary<string, int> {
+				{ "Grass Blank", 10 },
+			}},
+		};
+
 		tilemapNoCollision.ClearAllTiles();
 
 		// TileObject tileObject = Array.Find(tileObjects, tileObj => tileObj.name == "Water Normal");
@@ -213,9 +224,9 @@ public class MapGen : MonoBehaviour {
 		int inset = 4; // arbitrary inset to prevent the tile from being placed at the edge of the map
 		int randomX = r.Next(inset, mapWidth - inset);
 		int randomY = r.Next(inset, mapHeight - inset);
-		int randomTileId = r.Next(0, tileObjects.Length);
-		tileSups[randomX + "-" + randomY] = new int[] { randomTileId };
-		SetTile(randomX, randomY, randomTileId);
+		int randomTileIndex = r.Next(0, tileObjects.Length);
+		tileSups[randomX + "-" + randomY] = new int[] { randomTileIndex };
+		SetTile(randomX, randomY, randomTileIndex);
 		StartCoroutine(WFC_Steps(randomX, randomY));
 	}
 
@@ -244,9 +255,9 @@ public class MapGen : MonoBehaviour {
 				if (setTiles[fullyCollapsedTile.Key] != -1) continue; // skip if tile is already set
 				// Get x and y coordinates from the key:
 				(int x, int y) = GetCoordinates(fullyCollapsedTile.Key);
-				int tileId = fullyCollapsedTile.Value[0];
+				int tileIndex = fullyCollapsedTile.Value[0];
 				// print("Tile [" + x + ", " + y + "] is fully collapsed!");
-				SetTile(x, y, tileId);
+				SetTile(x, y, tileIndex);
 			}
 
 			// Break early if exit condition is already met:
@@ -254,12 +265,23 @@ public class MapGen : MonoBehaviour {
 			// Get a random tile from the lowest entropy bucket:
 			KeyValuePair<string, int[]> randomTile = tileSupsByEntropy[lowestEntropy].ElementAt(r.Next(tileSupsByEntropy[lowestEntropy].Count));
 			(int nextX, int nextY) = GetCoordinates(randomTile.Key);
-			int randomTileId = randomTile.Value.ElementAt(r.Next(randomTile.Value.Length));
+			// Write the coulative weigts of all sups into an array:
+			int[] comulativeSupWeights = new int[randomTile.Value.Length];
+			int totalWeight = 0;
+			for (int i = 0; i < randomTile.Value.Length; i++) {
+				int weight = GetWeight("default", tileObjects[randomTile.Value[i]].name);
+				totalWeight += weight;
+				comulativeSupWeights[i] = totalWeight;
+			}
+			// Get a (weighted) random tile from the superset:
+			int randomValue = r.Next(totalWeight);
+			int index = comulativeSupWeights.ToList().FindIndex(comWeight => randomValue < comWeight);
+			int randomTileIndex = randomTile.Value[index];
 			// Save the current entropy of all tiles:
 			SaveCurrentEntropy();
 			// Set the selcted tile:
-			tileSups[randomTile.Key] = new int[] { randomTileId };
-			SetTile(nextX, nextY, randomTileId);
+			tileSups[randomTile.Key] = new int[] { randomTileIndex };
+			SetTile(nextX, nextY, randomTileIndex);
 			 // Wait one frame before continuing:
 			yield return null;
 			// Set the coordinates for the next iteration:
@@ -385,17 +407,17 @@ public class MapGen : MonoBehaviour {
 	void DrawTile(int x, int y, Tile tile) {
 		tilemapNoCollision.SetTile(new Vector3Int(x, y, 0), tile);
 	}
-	void DrawTile(int x, int y, int tileId) {
-		tilemapNoCollision.SetTile(new Vector3Int(x, y, 0), tileObjects[tileId].tile);
+	void DrawTile(int x, int y, int tileIndex) {
+		tilemapNoCollision.SetTile(new Vector3Int(x, y, 0), tileObjects[tileIndex].tile);
 	}
 
 	void SetTile(int x, int y, Tile tile) {
 		setTiles[x + "-" + y] = Array.IndexOf(tileObjects, tileObjects.First(t => t.tile == tile));
 		DrawTile(x, y, tile);
 	}
-	void SetTile(int x, int y, int tileId) {
-		setTiles[x + "-" + y] = tileId;
-		DrawTile(x, y, tileId);
+	void SetTile(int x, int y, int tileIndex) {
+		setTiles[x + "-" + y] = tileIndex;
+		DrawTile(x, y, tileIndex);
 	}
 
 	(int, int) GetCoordinates(string key) {
@@ -409,4 +431,15 @@ public class MapGen : MonoBehaviour {
 			oldTileSupCounts.Add(sups.Key, sups.Value.Length);
 		}
 	}
+
+	int GetWeight(string biome, string tileName) {
+		int weight = 0;
+		tileWeights[biome].TryGetValue(tileName, out weight);
+		if (weight == 0) {
+			tileWeights["default"].TryGetValue(tileName, out weight);
+			if (weight == 0) weight = 10;
+		}
+		return weight;
+	}
+
 }
