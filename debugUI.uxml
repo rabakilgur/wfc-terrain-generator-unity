@@ -1,0 +1,5 @@
+<ui:UXML xmlns:ui="UnityEngine.UIElements" xmlns:uie="UnityEditor.UIElements" editor-extension-mode="False">
+    <ui:VisualElement style="flex-grow: 1; background-color: rgba(0, 0, 0, 0); align-items: flex-end; justify-content: center; align-self: auto; flex-direction: column;">
+        <ui:VisualElement name="Container" style="flex-grow: 1; align-self: auto; align-items: auto; justify-content: center; background-color: rgba(41, 41, 41, 0.5); min-width: 100px; min-height: 50px; flex-direction: column;" />
+    </ui:VisualElement>
+</ui:UXML>
