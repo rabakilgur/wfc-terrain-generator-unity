@@ -28,6 +28,11 @@ public class MapGen : MonoBehaviour {
 		Forrest,
 	}
 
+	enum TG { // Type Group
+		None,
+		Grass,
+	}
+
 	private Tile recGreen;
 	private Tile recRed;
 	private Tile recBlue;
@@ -43,8 +48,9 @@ public class MapGen : MonoBehaviour {
 	class TileObject {
 		public Dictionary<string, TT> terrainTypes;
 		public Tile tile;
+		public TG tileGroup;
 		public string name;
-		public TileObject(TT topLeft, TT top, TT topRight, TT left, TT right, TT bottomLeft, TT bottom, TT bottomRight, Tile tile, string name) {
+		public TileObject(TT topLeft, TT top, TT topRight, TT left, TT right, TT bottomLeft, TT bottom, TT bottomRight, Tile tile, string name, TG tileGroup = 0) {
 			terrainTypes = new Dictionary<string, TT> {
 				{ "topLeft",     topLeft },
 				{ "top",         top },
@@ -56,6 +62,7 @@ public class MapGen : MonoBehaviour {
 				{ "bottomRight", bottomRight },
 			};
 			this.tile = tile;
+			this.tileGroup = tileGroup;
 			this.name = name;
 		}
 	}
@@ -94,18 +101,18 @@ public class MapGen : MonoBehaviour {
 		};
 
 		tileObjects = new TileObject[] {
-			//  TopLeft     Top     TopRight    Left      Right  BottomLeft  Bottom  BottomRight  Tile          Name
+			//  TopLeft     Top     TopRight    Left      Right  BottomLeft  Bottom  BottomRight  Tile        TypeGroup    Name
 			new(TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, GetTile(218), "Water Normal"),
 
-			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(0), "Grass Blank"),
-			// new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(1), "Grass Bushy 1"),
-			// new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(2), "Grass Bushy 2"),
-			// new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(23), "Grass Bushy 3"),
-			// new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(24), "Grass Bushy 4"),
-			// new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(25), "Grass Bushy 5"),
-			// new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(50), "Grass Bushy 6"),
-			// new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(51), "Grass Bushy 7"),
-			// new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(52), "Grass Bushy 8"),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(0), "Grass Blank", TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(1), "Grass Bushy 1", TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(2), "Grass Bushy 2", TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(23), "Grass Bushy 3", TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(24), "Grass Bushy 4", TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(25), "Grass Bushy 5", TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(50), "Grass Bushy 6", TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(51), "Grass Bushy 7", TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(52), "Grass Bushy 8", TG.Grass),
 
 
 			new(TT.Grass, TT.Grass, TT.Grass, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, GetTile(191), "Grass-Shore Top"),
@@ -127,7 +134,19 @@ public class MapGen : MonoBehaviour {
 		tileWeights = new Dictionary<string, Dictionary<string, int>> {
 			{ "default", new Dictionary<string, int> {
 				{ "Water Normal", 10 },
-				{ "Grass Blank", 10 },
+				{ "Grass Blank", 5 },
+				{ "Grass Bushy 1", 5 },
+				{ "Grass Bushy 2", 5 },
+				{ "Grass Bushy 3", 5 },
+				{ "Grass Bushy 4", 5 },
+				{ "Grass Bushy 5", 5 },
+				{ "Grass Bushy 6", 5 },
+				{ "Grass Bushy 7", 5 },
+				{ "Grass Bushy 8", 5 },
+				{ "Grass-Shore Top", 10 },
+				{ "Grass-Shore Bottom", 10 },
+				{ "Grass-Shore Left", 10 },
+				{ "Grass-Shore Right", 10 },
 			}},
 			{ "mountain", new Dictionary<string, int> {
 				{ "Grass Blank", 10 },
@@ -224,7 +243,7 @@ public class MapGen : MonoBehaviour {
 		int inset = 4; // arbitrary inset to prevent the tile from being placed at the edge of the map
 		int randomX = r.Next(inset, mapWidth - inset);
 		int randomY = r.Next(inset, mapHeight - inset);
-		int randomTileIndex = r.Next(0, tileObjects.Length);
+		int randomTileIndex = r.Next(tileObjects.Length);
 		tileSups[randomX + "-" + randomY] = new int[] { randomTileIndex };
 		SetTile(randomX, randomY, randomTileIndex);
 		StartCoroutine(WFC_Steps(randomX, randomY));
@@ -243,7 +262,7 @@ public class MapGen : MonoBehaviour {
 			Dictionary<int, Dictionary<string, int[]>> tileSupsByEntropy = new();
 			lowestEntropy = int.MaxValue;
 			foreach (var sups in tileSups) { // iterate over all tiles
-				int entropy = sups.Value.Length; // get the entropy of the current tile
+				int entropy = CalcUniqueTilePossibilities(sups.Value); // get the entropy of the current tile
 				if (entropy < lowestEntropy && entropy > 1) lowestEntropy = entropy; // if current entropy is lower than lowestEntropy (but not 1), set lowestEntropy to current entropy
 				tileSupsByEntropy.TryAdd(entropy, new()); // create a new bucket for the current entropy if it doesn't exist yet
 				tileSupsByEntropy[entropy].Add(sups.Key, sups.Value); // put the tile into the bucket of its entropy
@@ -255,33 +274,23 @@ public class MapGen : MonoBehaviour {
 				if (setTiles[fullyCollapsedTile.Key] != -1) continue; // skip if tile is already set
 				// Get x and y coordinates from the key:
 				(int x, int y) = GetCoordinates(fullyCollapsedTile.Key);
-				int tileIndex = fullyCollapsedTile.Value[0];
+				int fullyCollapsedTileIndex = GetWeightedRandomTile(fullyCollapsedTile.Value); // choose a random tile from the superset (this is only necessary if all remaining tiles have are in the same tile group)
+				tileSups[fullyCollapsedTile.Key] = new int[] { fullyCollapsedTileIndex }; // set the superset to the fully collapsed tile
 				// print("Tile [" + x + ", " + y + "] is fully collapsed!");
-				SetTile(x, y, tileIndex);
+				SetTile(x, y, fullyCollapsedTileIndex);
 			}
 
 			// Break early if exit condition is already met:
 			if (lowestEntropy == int.MaxValue) break;
 			// Get a random tile from the lowest entropy bucket:
-			KeyValuePair<string, int[]> randomTile = tileSupsByEntropy[lowestEntropy].ElementAt(r.Next(tileSupsByEntropy[lowestEntropy].Count));
-			(int nextX, int nextY) = GetCoordinates(randomTile.Key);
-			// Write the coulative weigts of all sups into an array:
-			int[] comulativeSupWeights = new int[randomTile.Value.Length];
-			int totalWeight = 0;
-			for (int i = 0; i < randomTile.Value.Length; i++) {
-				int weight = GetWeight("default", tileObjects[randomTile.Value[i]].name);
-				totalWeight += weight;
-				comulativeSupWeights[i] = totalWeight;
-			}
-			// Get a (weighted) random tile from the superset:
-			int randomValue = r.Next(totalWeight);
-			int index = comulativeSupWeights.ToList().FindIndex(comWeight => randomValue < comWeight);
-			int randomTileIndex = randomTile.Value[index];
+			KeyValuePair<string, int[]> nextTile = tileSupsByEntropy[lowestEntropy].ElementAt(r.Next(tileSupsByEntropy[lowestEntropy].Count));
+			(int nextX, int nextY) = GetCoordinates(nextTile.Key);
+			int nextTileIndex = GetWeightedRandomTile(nextTile.Value);
 			// Save the current entropy of all tiles:
 			SaveCurrentEntropy();
 			// Set the selcted tile:
-			tileSups[randomTile.Key] = new int[] { randomTileIndex };
-			SetTile(nextX, nextY, randomTileIndex);
+			tileSups[nextTile.Key] = new int[] { nextTileIndex };
+			SetTile(nextX, nextY, nextTileIndex);
 			 // Wait one frame before continuing:
 			yield return null;
 			// Set the coordinates for the next iteration:
@@ -394,7 +403,7 @@ public class MapGen : MonoBehaviour {
 
 		GUILayout.BeginArea(new Rect(10, 10, 250, 580));
 		GUILayout.Box($"X: {mouseX}  Y: {mouseY}");
-		GUILayout.Box($"Possible tiles: {(tileSups.ContainsKey(mouseX + "-" + mouseY) ? tileSups[mouseX + "-" + mouseY].Length : 0)} / {tileObjects.Length}\n\n{(tileSups.ContainsKey(mouseX + "-" + mouseY) ? string.Join('\n', tileSups[mouseX + "-" + mouseY].Select(sup => tileObjects[sup].name)) : "")}");
+		GUILayout.Box($"Possible tiles: {(tileSups.ContainsKey(mouseX + "-" + mouseY) ? tileSups[mouseX + "-" + mouseY].Length : 0)} / {tileObjects.Length}\nPossible unique tile shapes: {(tileSups.ContainsKey(mouseX + "-" + mouseY) ? CalcUniqueTilePossibilities(tileSups[mouseX + "-" + mouseY]) : 0)}\n\n{(tileSups.ContainsKey(mouseX + "-" + mouseY) ? string.Join('\n', tileSups[mouseX + "-" + mouseY].Select(sup => tileObjects[sup].name)) : "")}");
 		// print(string.Join(", ", tileSups.Keys.ToArray()));
 		// GUILayout.Label("Mouse position: " + mousePos);
 		GUILayout.EndArea();
@@ -440,6 +449,42 @@ public class MapGen : MonoBehaviour {
 			if (weight == 0) weight = 10;
 		}
 		return weight;
+	}
+
+	int GetWeightedRandomTile(int[] sups) {
+		// Write the coulative weigts of all sups into an array:
+		int[] comulativeSupWeights = new int[sups.Length];
+		int totalWeight = 0;
+		for (int i = 0; i < sups.Length; i++) {
+			int weight = GetWeight("default", tileObjects[sups[i]].name);
+			totalWeight += weight;
+			comulativeSupWeights[i] = totalWeight;
+		}
+		// Get a (weighted) random tile from the superset:
+		int randomValue = r.Next(totalWeight);
+		// print("Next tile: [" + nextX + ", " + nextY + "]");
+		// print("Random value: " + randomValue + " (total weight: " + totalWeight + ")");
+		// print("Comulative weights: " + string.Join(", ", comulativeSupWeights));
+		int index = comulativeSupWeights.ToList().FindIndex(comWeight => randomValue < comWeight);
+		// print("Chosen index: " + index);
+		int randomTileIndex = sups[index];
+		// print("Chosen tile: " + tileObjects[randomTileIndex].name + " (" + randomTileIndex + ")");
+		return randomTileIndex;
+	}
+
+	int CalcUniqueTilePossibilities(int[] sups) {
+		HashSet<TG> alreadyCountedTileGroups = new();
+		int uniqueTilePossibilities = 0;
+		foreach (int sup in sups) {
+			TG tileGroup = tileObjects[sup].tileGroup;
+			if (tileGroup == TG.None) {
+				uniqueTilePossibilities++;
+			} else if (!alreadyCountedTileGroups.Contains(tileGroup)) {
+				uniqueTilePossibilities++;
+				alreadyCountedTileGroups.Add(tileGroup);
+			}
+		}
+		return uniqueTilePossibilities;
 	}
 
 }
