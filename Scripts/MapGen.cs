@@ -20,17 +20,22 @@ public class MapGen : MonoBehaviour {
 	private Dictionary<string, int> oldTileSupCounts = new();
 	private Dictionary<string, (string, string)[]> facingDirections = new();
 	private Dictionary<string, Dictionary<string, int>> tileWeights = new();
+	private Dictionary<int, Tile> loadedTiles = new();
 
 	enum TT { // Tile Type
 		Grass,
 		Water,
+		Trees,
 		Hill,
-		Forrest,
 	}
 
-	enum TG { // Type Group
+	enum TG { // Tile Group
 		None,
 		Grass,
+		TreesTipTopLeft,
+		TreesTipTopRight,
+		TreesTipBottomLeft,
+		TreesTipBottomRight,
 	}
 
 	private Tile recGreen;
@@ -47,10 +52,11 @@ public class MapGen : MonoBehaviour {
 
 	class TileObject {
 		public Dictionary<string, TT> terrainTypes;
-		public Tile tile;
+		public int[] tileNbrs;
+		public TT tileClass;
 		public TG tileGroup;
 		public string name;
-		public TileObject(TT topLeft, TT top, TT topRight, TT left, TT right, TT bottomLeft, TT bottom, TT bottomRight, Tile tile, string name, TG tileGroup = 0) {
+		public TileObject(TT topLeft, TT top, TT topRight, TT left, TT right, TT bottomLeft, TT bottom, TT bottomRight, int[] tileNbrs, string name, TT tileClass, TG tileGroup = 0) {
 			terrainTypes = new Dictionary<string, TT> {
 				{ "topLeft",     topLeft },
 				{ "top",         top },
@@ -61,7 +67,8 @@ public class MapGen : MonoBehaviour {
 				{ "bottom",      bottom },
 				{ "bottomRight", bottomRight },
 			};
-			this.tile = tile;
+			this.tileNbrs = tileNbrs;
+			this.tileClass = tileClass;
 			this.tileGroup = tileGroup;
 			this.name = name;
 		}
@@ -101,34 +108,61 @@ public class MapGen : MonoBehaviour {
 		};
 
 		tileObjects = new TileObject[] {
-			//  TopLeft     Top     TopRight    Left      Right  BottomLeft  Bottom  BottomRight  Tile        TypeGroup    Name
-			new(TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, GetTile(218), "Water Normal"),
+			//  TopLeft     Top     TopRight    Left      Right  BottomLeft  Bottom  BottomRight         TileNbrs      Name       TileClass  TypeGroup
+			new(TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, new int[] { 218 }, "Water Normal", TT.Water),
 
-			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(0), "Grass Blank", TG.Grass),
-			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(1), "Grass Bushy 1", TG.Grass),
-			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(2), "Grass Bushy 2", TG.Grass),
-			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(23), "Grass Bushy 3", TG.Grass),
-			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(24), "Grass Bushy 4", TG.Grass),
-			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(25), "Grass Bushy 5", TG.Grass),
-			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(50), "Grass Bushy 6", TG.Grass),
-			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(51), "Grass Bushy 7", TG.Grass),
-			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(52), "Grass Bushy 8", TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 0 }, "Grass Blank", TT.Grass, TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 1 }, "Grass Bushy 1", TT.Grass, TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 2 }, "Grass Bushy 2", TT.Grass, TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 23 }, "Grass Bushy 3", TT.Grass, TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 24 }, "Grass Bushy 4", TT.Grass, TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 25 }, "Grass Bushy 5", TT.Grass, TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 50 }, "Grass Bushy 6", TT.Grass, TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 51 }, "Grass Bushy 7", TT.Grass, TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 52 }, "Grass Bushy 8", TT.Grass, TG.Grass),
 
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, new int[] { 191 }, "Grass-Shore Top", TT.Grass),
+			new(TT.Grass, TT.Water, TT.Water, TT.Grass, TT.Water, TT.Grass, TT.Water, TT.Water, new int[] { 217 }, "Grass-Shore Left", TT.Grass),
+			new(TT.Water, TT.Water, TT.Grass, TT.Water, TT.Grass, TT.Water, TT.Water, TT.Grass, new int[] { 219 }, "Grass-Shore Right", TT.Grass),
+			new(TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Grass, TT.Grass, TT.Grass, new int[] { 243 }, "Grass-Shore Bottom", TT.Grass),
 
-			new(TT.Grass, TT.Grass, TT.Grass, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, GetTile(191), "Grass-Shore Top"),
-			new(TT.Grass, TT.Water, TT.Water, TT.Grass, TT.Water, TT.Grass, TT.Water, TT.Water, GetTile(217), "Grass-Shore Left"),
-			new(TT.Water, TT.Water, TT.Grass, TT.Water, TT.Grass, TT.Water, TT.Water, TT.Grass, GetTile(219), "Grass-Shore Right"),
-			new(TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Grass, TT.Grass, TT.Grass, GetTile(243), "Grass-Shore Bottom"),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Water, TT.Grass, TT.Water, TT.Water, new int[] { 190 }, "Grass-Shore Top-Left", TT.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Water, TT.Grass, TT.Water, TT.Water, TT.Grass, new int[] { 192 }, "Grass-Shore Top-Right", TT.Grass),
+			new(TT.Grass, TT.Water, TT.Water, TT.Grass, TT.Water, TT.Grass, TT.Grass, TT.Grass, new int[] { 242 }, "Grass-Shore Bottom-Left", TT.Grass),
+			new(TT.Water, TT.Water, TT.Grass, TT.Water, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 244 }, "Grass-Shore Bottom-Right", TT.Grass),
 
-			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Water, TT.Grass, TT.Water, TT.Water, GetTile(190), "Grass-Shore Top Left"),
-			new(TT.Grass, TT.Grass, TT.Grass, TT.Water, TT.Grass, TT.Water, TT.Water, TT.Grass, GetTile(192), "Grass-Shore Top Right"),
-			new(TT.Grass, TT.Water, TT.Water, TT.Grass, TT.Water, TT.Grass, TT.Grass, TT.Grass, GetTile(242), "Water-Shore Bottom Left"),
-			new(TT.Water, TT.Water, TT.Grass, TT.Water, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(244), "Grass-Shore Bottom Right"),
+			new(TT.Grass, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, new int[] { 193 }, "Grass-Shore Tip Top-Left", TT.Grass),
+			new(TT.Water, TT.Water, TT.Grass, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, new int[] { 194 }, "Grass-Shore Tip Top-Right", TT.Grass),
+			new(TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Grass, TT.Water, TT.Water, new int[] { 220 }, "Grass-Shore Tip Bottom-Left", TT.Grass),
+			new(TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Grass, new int[] { 221 }, "Grass-Shore Tip Bottom-Right", TT.Grass),
 
-			new(TT.Grass, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, GetTile(193), "Grass-Shore Tip Top Left"),
-			new(TT.Water, TT.Water, TT.Grass, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, GetTile(194), "Grass-Shore Tip Top Right"),
-			new(TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Grass, TT.Water, TT.Water, GetTile(220), "Grass-Shore Tip Bottom Left"),
-			new(TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Grass, GetTile(221), "Grass-Shore Tip Bottom Right"),
+			new(TT.Trees, TT.Trees, TT.Trees, TT.Trees, TT.Trees, TT.Trees, TT.Trees, TT.Trees, new int[] { 150 }, "Trees", TT.Trees),
+
+			new(TT.Trees, TT.Trees, TT.Trees, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 0, 168 }, "Trees Top on Grass", TT.Trees),
+			new(TT.Trees, TT.Grass, TT.Grass, TT.Trees, TT.Grass, TT.Trees, TT.Grass, TT.Grass, new int[] { 0, 151 }, "Trees Left on Grass", TT.Trees),
+			new(TT.Grass, TT.Grass, TT.Trees, TT.Grass, TT.Trees, TT.Grass, TT.Grass, TT.Trees, new int[] { 0, 149 }, "Trees Right on Grass", TT.Trees),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Trees, TT.Trees, TT.Trees, new int[] { 0, 132 }, "Trees Bottom on Grass", TT.Trees),
+
+			new(TT.Trees, TT.Trees, TT.Trees, TT.Trees, TT.Grass, TT.Trees, TT.Grass, TT.Grass, new int[] { 0, 156 }, "Trees Top-Left on Grass", TT.Trees),
+			new(TT.Trees, TT.Trees, TT.Trees, TT.Grass, TT.Trees, TT.Grass, TT.Grass, TT.Trees, new int[] { 0, 155 }, "Trees Top-Right on Grass", TT.Trees),
+			new(TT.Trees, TT.Grass, TT.Grass, TT.Trees, TT.Grass, TT.Trees, TT.Trees, TT.Trees, new int[] { 0, 138 }, "Trees Bottom-Left on Grass", TT.Trees),
+			new(TT.Grass, TT.Grass, TT.Trees, TT.Grass, TT.Trees, TT.Trees, TT.Trees, TT.Trees, new int[] { 0, 137 }, "Trees Bottom-Right on Grass", TT.Trees),
+
+			new(TT.Trees, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 0, 169 }, "Trees Tip Top-Left 1 on Grass", TT.Trees, TG.TreesTipTopLeft),
+			new(TT.Trees, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 0, 172 }, "Trees Tip Top-Left 2 on Grass", TT.Trees, TG.TreesTipTopLeft),
+			new(TT.Grass, TT.Grass, TT.Trees, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 0, 167 }, "Trees Tip Top-Right 1 on Grass", TT.Trees, TG.TreesTipTopRight),
+			new(TT.Grass, TT.Grass, TT.Trees, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 0, 170 }, "Trees Tip Top-Right 2 on Grass", TT.Trees, TG.TreesTipTopRight),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Trees, TT.Grass, TT.Grass, new int[] { 0, 133 }, "Trees Tip Bottom-Left 1 on Grass", TT.Trees, TG.TreesTipBottomLeft),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Trees, TT.Grass, TT.Grass, new int[] { 0, 136 }, "Trees Tip Bottom-Left 2 on Grass", TT.Trees, TG.TreesTipBottomLeft),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Trees, new int[] { 0, 131 }, "Trees Tip Bottom-Right 1 on Grass", TT.Trees, TG.TreesTipBottomRight),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Trees, new int[] { 0, 134 }, "Trees Tip Bottom-Right 2 on Grass", TT.Trees, TG.TreesTipBottomRight),
+
+			new(TT.Grass, TT.Trees, TT.Trees, TT.Trees, TT.Trees, TT.Trees, TT.Trees, TT.Grass, new int[] { 0, 134 }, "Trees Diagonal Top-Right Bottom-Left on Grass", TT.Trees),
+			new(TT.Trees, TT.Trees, TT.Grass, TT.Trees, TT.Trees, TT.Grass, TT.Trees, TT.Trees, new int[] { 0, 134 }, "Trees Diagonal Top-Left Bottom-Right on Grass", TT.Trees),
+
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 0, 139 }, "Tree Center on Grass", TT.Trees, TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 0, 157 }, "Tree Left on Grass", TT.Trees, TG.Grass),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 0, 175 }, "Tree Right on Grass", TT.Trees, TG.Grass),
 		};
 
 		tileWeights = new Dictionary<string, Dictionary<string, int>> {
@@ -410,20 +444,29 @@ public class MapGen : MonoBehaviour {
 	}
 
 	Tile GetTile(int id) {
-		return Resources.Load<Tile>("Tiles/punyworld-overworld-tileset_" + id);
+		Tile tile;
+		loadedTiles.TryGetValue(id, out tile);
+		if (tile == null) {
+			tile = Resources.Load<Tile>("Tiles/punyworld-overworld-tileset_" + id);
+			loadedTiles.Add(id, tile);
+		}
+		return tile;
 	}
 
 	void DrawTile(int x, int y, Tile tile) {
 		tilemapNoCollision.SetTile(new Vector3Int(x, y, 0), tile);
 	}
 	void DrawTile(int x, int y, int tileIndex) {
-		tilemapNoCollision.SetTile(new Vector3Int(x, y, 0), tileObjects[tileIndex].tile);
+		int[] tiles = tileObjects[tileIndex].tileNbrs;
+		for (int i = 0; i < tiles.Length; i++) {
+			tilemapNoCollision.SetTile(new Vector3Int(x, y, i), GetTile(tiles[i]));
+		}
 	}
 
-	void SetTile(int x, int y, Tile tile) {
-		setTiles[x + "-" + y] = Array.IndexOf(tileObjects, tileObjects.First(t => t.tile == tile));
-		DrawTile(x, y, tile);
-	}
+	// void SetTile(int x, int y, Tile tile) {
+	// 	setTiles[x + "-" + y] = Array.IndexOf(tileObjects, tileObjects.First(t => t.tile == tile));
+	// 	DrawTile(x, y, tile);
+	// }
 	void SetTile(int x, int y, int tileIndex) {
 		setTiles[x + "-" + y] = tileIndex;
 		DrawTile(x, y, tileIndex);
