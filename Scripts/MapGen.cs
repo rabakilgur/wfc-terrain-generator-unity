@@ -94,6 +94,8 @@ public class MapGen : MonoBehaviour {
 
 		tileObjects = new TileObject[] {
 			//  TopLeft     Top     TopRight    Left      Right  BottomLeft  Bottom  BottomRight  Tile          Name
+			new(TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, GetTile(218), "Water Normal"),
+
 			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(0), "Grass Blank"),
 			// new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(1), "Grass Bushy 1"),
 			// new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(2), "Grass Bushy 2"),
@@ -104,7 +106,6 @@ public class MapGen : MonoBehaviour {
 			// new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(51), "Grass Bushy 7"),
 			// new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, GetTile(52), "Grass Bushy 8"),
 
-			new(TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, GetTile(218), "Water Normal"),
 
 			new(TT.Grass, TT.Grass, TT.Grass, TT.Water, TT.Water, TT.Water, TT.Water, TT.Water, GetTile(191), "Grass-Shore Top"),
 			new(TT.Grass, TT.Water, TT.Water, TT.Grass, TT.Water, TT.Grass, TT.Water, TT.Water, GetTile(217), "Grass-Shore Left"),
@@ -124,14 +125,8 @@ public class MapGen : MonoBehaviour {
 
 		tilemapNoCollision.ClearAllTiles();
 
-		// Draw the overdraw tiles:
-		Tile overdrawTile = GetTile(218);
-		TileBase[] topBottomTiles = Enumerable.Repeat(overdrawTile, (mapWidth + mapOverdraw * 2) * mapOverdraw).ToArray();
-		TileBase[] leftRightTiles = Enumerable.Repeat(overdrawTile, mapOverdraw * mapHeight).ToArray();
-		tilemapNoCollision.SetTilesBlock(new BoundsInt(-mapOverdraw, -mapOverdraw, 0, mapWidth + mapOverdraw * 2, mapOverdraw, 1), topBottomTiles); // bottom with corners
-		tilemapNoCollision.SetTilesBlock(new BoundsInt(-mapOverdraw, mapHeight, 0, mapWidth + mapOverdraw * 2, mapOverdraw, 1), topBottomTiles); // top with corners
-		tilemapNoCollision.SetTilesBlock(new BoundsInt(-mapOverdraw, 0, 0, mapOverdraw, mapHeight, 1), leftRightTiles); // left
-		tilemapNoCollision.SetTilesBlock(new BoundsInt(mapWidth, 0, 0, mapOverdraw, mapHeight, 1), leftRightTiles); // right
+		// TileObject tileObject = Array.Find(tileObjects, tileObj => tileObj.name == "Water Normal");
+		// tileObjects.ToList().FindIndex(tileObj => tileObj.name == "Water Normal");
 
 		// Fill the map with placeholder tiles:
 		// tilemapNoCollision.SetTilesBlock(new BoundsInt(0, 0, 0, mapWidth, mapHeight, 1), Enumerable.Repeat(recGrey, mapWidth * mapHeight).ToArray());
@@ -146,14 +141,59 @@ public class MapGen : MonoBehaviour {
 		}
 
 		WFC_Init();
+		GenerateOverdraw();
 		WFC_Start();
 	}
 
 	// Update is called once per frame
 	void Update() {}
 
-	Tile GetTile(int id) {
-		return Resources.Load<Tile>("Tiles/punyworld-overworld-tileset_" + id);
+	void GenerateOverdraw() {
+		// Draw the overdraw tiles:
+		Tile overdrawTile = GetTile(218); // Water Normal
+		TileBase[] topBottomTiles = Enumerable.Repeat(overdrawTile, (mapWidth + mapOverdraw * 2) * mapOverdraw).ToArray();
+		TileBase[] leftRightTiles = Enumerable.Repeat(overdrawTile, mapOverdraw * mapHeight).ToArray();
+		tilemapNoCollision.SetTilesBlock(new BoundsInt(-mapOverdraw, -mapOverdraw, 0, mapWidth + mapOverdraw * 2, mapOverdraw, 1), topBottomTiles); // bottom with corners
+		tilemapNoCollision.SetTilesBlock(new BoundsInt(-mapOverdraw, mapHeight, 0, mapWidth + mapOverdraw * 2, mapOverdraw, 1), topBottomTiles); // top with corners
+		tilemapNoCollision.SetTilesBlock(new BoundsInt(-mapOverdraw, 0, 0, mapOverdraw, mapHeight, 1), leftRightTiles); // left
+		tilemapNoCollision.SetTilesBlock(new BoundsInt(mapWidth, 0, 0, mapOverdraw, mapHeight, 1), leftRightTiles); // right
+
+		int overdrawTileIndex = tileObjects.ToList().FindIndex(tileObj => tileObj.name == "Water Normal");
+
+		// Save the current entropy of all tiles:
+		SaveCurrentEntropy();
+		// Iterate around the map to set/prepare the necessary information for the WFC check algorithm:
+		for (int x = -1; x < mapWidth + 1; x++) { // top and bottom with corners
+			// Top row with corners:
+			tileSups.Add(x + "--1", new int[] { overdrawTileIndex });
+			setTiles[x + "--1"] = overdrawTileIndex;
+			// Bottom row with corners:
+			tileSups.Add(x + "-" + mapHeight, new int[] { overdrawTileIndex });
+			setTiles[x + "-" + mapHeight] = overdrawTileIndex;
+		}
+		for (int y = 0; y < mapHeight; y++) { // left and right
+			// Left column:
+			tileSups.Add("-1-" + y, new int[] { overdrawTileIndex });
+			setTiles["-1-" + y] = overdrawTileIndex;
+			// Right column:
+			tileSups.Add(mapWidth + "-" + y, new int[] { overdrawTileIndex });
+			setTiles[mapWidth + "-" + y] = overdrawTileIndex;
+		}
+
+		// Iterate around the map again to check and reduce the entropy of all tiles that are close to the map border:
+		for (int x = -1; x < mapWidth + 1; x++) { // top and bottom with corners
+			// Top row with corners:
+			WFC_CheckNeighbors(x, -1);
+			// Bottom row with corners:
+			WFC_CheckNeighbors(x, mapHeight);
+		}
+		for (int y = 0; y < mapHeight; y++) { // left and right
+			// Left column:
+			WFC_CheckNeighbors(-1, y);
+			// Right column:
+			WFC_CheckNeighbors(mapWidth, y);
+		}
+
 	}
 
 	void WFC_Init() {
@@ -186,7 +226,7 @@ public class MapGen : MonoBehaviour {
 
 		while (lowestEntropy == int.MinValue || lowestEntropy != int.MaxValue) { // exit condition
 			print("-------------------- NEW WFC STEP: [" + currentX + ", " + currentY + "] --------------------");
-			// check and reduce the entropy of all tiles around the current tile (wich is the last tile that has been set):
+			// Check and reduce the entropy of all tiles around the current tile (wich is the last tile that has been set):
 			WFC_CheckNeighbors(currentX, currentY);
 			// Create a dictionary that bundles all tiles with the same entropy in one "bucket":
 			Dictionary<int, Dictionary<string, int[]>> tileSupsByEntropy = new();
@@ -250,7 +290,7 @@ public class MapGen : MonoBehaviour {
 	}
 
 	void WFC_Collapse(int x, int y, int sourceX, int sourceY) {
-		print("Collapsing [" + x + ", " + y + "]");
+		// print("Collapsing [" + x + ", " + y + "]");
 		if (x >= 0 && x < mapWidth && y >= 0 && y < mapHeight) { // check if target is in bounds
 			if (tileSups[x + "-" + y].Length == 1) return; // skip if own entropy is already fully collapsed
 			// if (y - sourceY != 0) print("Compare to " + (y - sourceY > 0 ? "bottom" : "top") + " neighbor");
@@ -336,6 +376,10 @@ public class MapGen : MonoBehaviour {
 		// print(string.Join(", ", tileSups.Keys.ToArray()));
 		// GUILayout.Label("Mouse position: " + mousePos);
 		GUILayout.EndArea();
+	}
+
+	Tile GetTile(int id) {
+		return Resources.Load<Tile>("Tiles/punyworld-overworld-tileset_" + id);
 	}
 
 	void DrawTile(int x, int y, Tile tile) {
