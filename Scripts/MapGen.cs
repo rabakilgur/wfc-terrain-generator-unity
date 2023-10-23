@@ -11,8 +11,8 @@ using UnityEngine.UIElements;
 
 public class MapGen : MonoBehaviour {
 
-	public static int mapWidth = 25;
-	public static int mapHeight = 15;
+	public static int mapWidth = 50;
+	public static int mapHeight = 25;
 	public static int mapOverdraw = 50;
 
 	private Dictionary<string, int[]> tileSups = new();
@@ -176,48 +176,56 @@ public class MapGen : MonoBehaviour {
 		int randomTileId = r.Next(0, tileObjects.Length);
 		tileSups[randomX + "-" + randomY] = new int[] { randomTileId };
 		SetTile(randomX, randomY, randomTileId);
-		WFC_Step(randomX, randomY);
+		StartCoroutine(WFC_Steps(randomX, randomY));
 	}
 
-	void WFC_Step(int currentX, int currentY) {
-		print("-------------------- NEW WFC STEP: [" + currentX + ", " + currentY + "] --------------------");
-		// Save the current entropy of all tiles:
-		SaveCurrentEntropy();
+	IEnumerator WFC_Steps(int startX, int startY) {
+		int lowestEntropy = int.MinValue; // this starting value is only important for the first iteration and will be overwritten immediately
+		int currentX = startX;
+		int currentY = startY;
 
-		WFC_CheckNeighbors(currentX, currentY);
-		// Create a dictionary that bundles all tiles with the same entropy in one "bucket":
-		Dictionary<int, Dictionary<string, int[]>> tileSupsByEntropy = new();
-		int lowestEntropy = int.MaxValue;
-		foreach (var sups in tileSups) { // iterate over all tiles
-			int entropy = sups.Value.Length; // get the entropy of the current tile
-			if (entropy < lowestEntropy && entropy > 1) lowestEntropy = entropy; // if current entropy is lower than lowestEntropy (but not 1), set lowestEntropy to current entropy
-			tileSupsByEntropy.TryAdd(entropy, new()); // create a new bucket for the current entropy if it doesn't exist yet
-			tileSupsByEntropy[entropy].Add(sups.Key, sups.Value); // put the tile into the bucket of its entropy
-			// print(entropy + ": " + sups.Key);
-		}
+		while (lowestEntropy == int.MinValue || lowestEntropy != int.MaxValue) { // exit condition
+			print("-------------------- NEW WFC STEP: [" + currentX + ", " + currentY + "] --------------------");
+			// check and reduce the entropy of all tiles around the current tile (wich is the last tile that has been set):
+			WFC_CheckNeighbors(currentX, currentY);
+			// Create a dictionary that bundles all tiles with the same entropy in one "bucket":
+			Dictionary<int, Dictionary<string, int[]>> tileSupsByEntropy = new();
+			lowestEntropy = int.MaxValue;
+			foreach (var sups in tileSups) { // iterate over all tiles
+				int entropy = sups.Value.Length; // get the entropy of the current tile
+				if (entropy < lowestEntropy && entropy > 1) lowestEntropy = entropy; // if current entropy is lower than lowestEntropy (but not 1), set lowestEntropy to current entropy
+				tileSupsByEntropy.TryAdd(entropy, new()); // create a new bucket for the current entropy if it doesn't exist yet
+				tileSupsByEntropy[entropy].Add(sups.Key, sups.Value); // put the tile into the bucket of its entropy
+			}
 
-		// Draw all tiles that are fully collapsed (entropy = 1):
-		// print("Nbr of fully collapsed tiles: " + tileSupsByEntropy[1].Count);
-		foreach (var fullyCollapsedTile in tileSupsByEntropy[1]) {
-			if (setTiles[fullyCollapsedTile.Key] != -1) continue; // skip if tile is already set
-			// Get x and y coordinates from the key:
-			(int x, int y) = GetCoordinates(fullyCollapsedTile.Key);
-			int tileId = fullyCollapsedTile.Value[0];
-			// print("Tile [" + x + ", " + y + "] is fully collapsed!");
-			SetTile(x, y, tileId);
+			// Draw all tiles that are fully collapsed (entropy = 1):
+			// print("Nbr of fully collapsed tiles: " + tileSupsByEntropy[1].Count);
+			foreach (var fullyCollapsedTile in tileSupsByEntropy[1]) {
+				if (setTiles[fullyCollapsedTile.Key] != -1) continue; // skip if tile is already set
+				// Get x and y coordinates from the key:
+				(int x, int y) = GetCoordinates(fullyCollapsedTile.Key);
+				int tileId = fullyCollapsedTile.Value[0];
+				// print("Tile [" + x + ", " + y + "] is fully collapsed!");
+				SetTile(x, y, tileId);
+			}
+
+			// Break early if exit condition is already met:
+			if (lowestEntropy == int.MaxValue) break;
+			// Get a random tile from the lowest entropy bucket:
+			KeyValuePair<string, int[]> randomTile = tileSupsByEntropy[lowestEntropy].ElementAt(r.Next(tileSupsByEntropy[lowestEntropy].Count));
+			(int nextX, int nextY) = GetCoordinates(randomTile.Key);
+			int randomTileId = randomTile.Value.ElementAt(r.Next(randomTile.Value.Length));
+			// Save the current entropy of all tiles:
+			SaveCurrentEntropy();
+			// Set the selcted tile:
+			tileSups[randomTile.Key] = new int[] { randomTileId };
+			SetTile(nextX, nextY, randomTileId);
+			 // Wait one frame before continuing:
+			yield return null;
+			// Set the coordinates for the next iteration:
+			currentX = nextX;
+			currentY = nextY;
 		}
-		// Exit condition:
-		if (lowestEntropy == int.MaxValue) return;
-		// Get a random tile from the lowest entropy bucket:
-		KeyValuePair<string, int[]> randomTile = tileSupsByEntropy[lowestEntropy].ElementAt(r.Next(tileSupsByEntropy[lowestEntropy].Count));
-		(int nextX, int nextY) = GetCoordinates(randomTile.Key);
-		int randomTileId = randomTile.Value.ElementAt(r.Next(randomTile.Value.Length));
-		// Save the current entropy of all tiles:
-		SaveCurrentEntropy();
-		// Recursively do the next step:
-		tileSups[randomTile.Key] = new int[] { randomTileId };
-		SetTile(nextX, nextY, randomTileId);
-		WFC_Step(nextX, nextY);
 	}
 
 	void WFC_CheckNeighbors(int x, int y) {
@@ -226,7 +234,7 @@ public class MapGen : MonoBehaviour {
 		// Check all tiles in a circle (or rather a diamond shape) around the source tile:
 		// Note: we don't actually need to iterate around the entire circle, but only down from the top position until one step before the right position. The rest of the positions can be checked be mirroring our current position around the source tile or the x/y axis. This means that we only need to check 1/4 of the circle, but in every step we need to check 4 tiles instead of 1.
 		for (int dist = 1; dist <= checkDistance; dist++) {
-			// set the starting position (top):
+			// Set the starting position (top):
 			int dX = 0;
 			int dY = dist;
 			for (int i = 0; i < dist; i++) {
@@ -242,12 +250,12 @@ public class MapGen : MonoBehaviour {
 	}
 
 	void WFC_Collapse(int x, int y, int sourceX, int sourceY) {
-		// print("Collapsing [" + x + ", " + y + "]");
+		print("Collapsing [" + x + ", " + y + "]");
 		if (x >= 0 && x < mapWidth && y >= 0 && y < mapHeight) { // check if target is in bounds
 			if (tileSups[x + "-" + y].Length == 1) return; // skip if own entropy is already fully collapsed
-			if (y - sourceY != 0) print("Compare to " + (y - sourceY > 0 ? "bottom" : "top") + " neighbor");
-			if (x - sourceX != 0) print("Compare to " + (x - sourceX > 0 ? "left" : "right") + " neighbor");
+			// if (y - sourceY != 0) print("Compare to " + (y - sourceY > 0 ? "bottom" : "top") + " neighbor");
 			if (y - sourceY != 0) WFC_Compare(x, y, x, y - sourceY > 0 ? y - 1 : y + 1); // check top/bottom neighbor
+			// if (x - sourceX != 0) print("Compare to " + (x - sourceX > 0 ? "left" : "right") + " neighbor");
 			if (x - sourceX != 0) WFC_Compare(x, y, x - sourceX > 0 ? x - 1 : x + 1, y); // check left/right neighbor
 		}
 	}
@@ -328,32 +336,6 @@ public class MapGen : MonoBehaviour {
 		// print(string.Join(", ", tileSups.Keys.ToArray()));
 		// GUILayout.Label("Mouse position: " + mousePos);
 		GUILayout.EndArea();
-
-		if (Input.GetKeyDown(KeyCode.Space)) {
-			// DEBUG this is only for debugging purposes
-			print("--> Pressed SPACE <--");
-
-			// Create a dictionary that bundles all tiles with the same entropy in one "bucket":
-			Dictionary<int, Dictionary<string, int[]>> tileSupsByEntropy = new();
-			int lowestEntropy = int.MaxValue;
-			foreach (var sups in tileSups) { // iterate over all tiles
-				int entropy = sups.Value.Length; // get the entropy of the current tile
-				if (entropy < lowestEntropy && entropy > 1) lowestEntropy = entropy; // if current entropy is lower than lowestEntropy (but not 1), set lowestEntropy to current entropy
-				tileSupsByEntropy.TryAdd(entropy, new()); // create a new bucket for the current entropy if it doesn't exist yet
-				tileSupsByEntropy[entropy].Add(sups.Key, sups.Value); // put the tile into the bucket of its entropy
-			}
-
-			// Get a random tile from the lowest entropy bucket:
-			KeyValuePair<string, int[]> randomTile = tileSupsByEntropy[lowestEntropy].ElementAt(r.Next(tileSupsByEntropy[lowestEntropy].Count));
-			(int nextX, int nextY) = GetCoordinates(randomTile.Key);
-			int randomTileId = randomTile.Value.ElementAt(r.Next(randomTile.Value.Length));
-			// Save the current entropy of all tiles:
-			SaveCurrentEntropy();
-			// Recursively do the next step:
-			tileSups[randomTile.Key] = new int[] { randomTileId };
-			SetTile(nextX, nextY, randomTileId);
-			WFC_Step(nextX, nextY);
-		}
 	}
 
 	void DrawTile(int x, int y, Tile tile) {
