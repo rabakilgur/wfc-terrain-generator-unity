@@ -36,6 +36,10 @@ public class MapGen : MonoBehaviour {
 		TreesTipTopRight,
 		TreesTipBottomLeft,
 		TreesTipBottomRight,
+		HillsTop,
+		HillsLeft,
+		HillsRight,
+		HillsBottom,
 	}
 
 	private Tile recGreen;
@@ -170,10 +174,10 @@ public class MapGen : MonoBehaviour {
 
 			// Hills:
 
-			new(TT.Hills, TT.Hills, TT.Hills, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 119 }, "Hills Top", TT.Hills),
-			new(TT.Hills, TT.Grass, TT.Grass, TT.Hills, TT.Grass, TT.Hills, TT.Grass, TT.Grass, new int[] { 100 }, "Hills Left", TT.Hills),
-			new(TT.Grass, TT.Grass, TT.Hills, TT.Grass, TT.Hills, TT.Grass, TT.Grass, TT.Hills, new int[] { 98 }, "Hills Right", TT.Hills),
-			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Hills, TT.Hills, TT.Hills, new int[] { 82 }, "Hills Bottom", TT.Hills),
+			new(TT.Hills, TT.Hills, TT.Hills, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 119 }, "Hills Top", TT.Hills, TG.HillsTop),
+			new(TT.Hills, TT.Grass, TT.Grass, TT.Hills, TT.Grass, TT.Hills, TT.Grass, TT.Grass, new int[] { 100 }, "Hills Left", TT.Hills, TG.HillsLeft),
+			new(TT.Grass, TT.Grass, TT.Hills, TT.Grass, TT.Hills, TT.Grass, TT.Grass, TT.Hills, new int[] { 98 }, "Hills Right", TT.Hills, TG.HillsRight),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Hills, TT.Hills, TT.Hills, new int[] { 82 }, "Hills Bottom", TT.Hills, TG.HillsBottom),
 
 			new(TT.Hills, TT.Hills, TT.Hills, TT.Hills, TT.Grass, TT.Hills, TT.Grass, TT.Grass, new int[] { 102 }, "Hills Top-Left", TT.Hills),
 			new(TT.Hills, TT.Hills, TT.Hills, TT.Grass, TT.Hills, TT.Grass, TT.Grass, TT.Hills, new int[] { 101 }, "Hills Top-Right", TT.Hills),
@@ -188,13 +192,13 @@ public class MapGen : MonoBehaviour {
 			new(TT.Grass, TT.Hills, TT.Hills, TT.Hills, TT.Hills, TT.Hills, TT.Hills, TT.Grass, new int[] { 122 }, "Hills Diagonal Top-Right Bottom-Left", TT.Hills),
 			new(TT.Hills, TT.Hills, TT.Grass, TT.Hills, TT.Hills, TT.Grass, TT.Hills, TT.Hills, new int[] { 121 }, "Hills Diagonal Top-Left Bottom-Right", TT.Hills),
 
-			new(TT.Hills, TT.Hills, TT.Hills, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 123 }, "Hills Stairs Top", TT.Hills),
-			new(TT.Hills, TT.Grass, TT.Grass, TT.Hills, TT.Grass, TT.Hills, TT.Grass, TT.Grass, new int[] { 104 }, "Hills Stairs Left", TT.Hills),
-			new(TT.Grass, TT.Grass, TT.Hills, TT.Grass, TT.Hills, TT.Grass, TT.Grass, TT.Hills, new int[] { 103 }, "Hills Stairs Right", TT.Hills),
-			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Hills, TT.Hills, TT.Hills, new int[] { 86 }, "Hills Stairs Bottom", TT.Hills),
+			new(TT.Hills, TT.Hills, TT.Hills, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 123 }, "Hills Stairs Top", TT.Hills, TG.HillsTop),
+			new(TT.Hills, TT.Grass, TT.Grass, TT.Hills, TT.Grass, TT.Hills, TT.Grass, TT.Grass, new int[] { 104 }, "Hills Stairs Left", TT.Hills, TG.HillsLeft),
+			new(TT.Grass, TT.Grass, TT.Hills, TT.Grass, TT.Hills, TT.Grass, TT.Grass, TT.Hills, new int[] { 103 }, "Hills Stairs Right", TT.Hills, TG.HillsRight),
+			new(TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Hills, TT.Hills, TT.Hills, new int[] { 86 }, "Hills Stairs Bottom", TT.Hills, TG.HillsBottom),
 
-			new(TT.Hills, TT.Hills, TT.Hills, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 95 }, "Hills Mine Top", TT.Hills),
-			new(TT.Hills, TT.Hills, TT.Hills, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 94 }, "Hills Mine Covered Top", TT.Hills),
+			new(TT.Hills, TT.Hills, TT.Hills, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 95 }, "Hills Mine Top", TT.Hills, TG.HillsTop),
+			new(TT.Hills, TT.Hills, TT.Hills, TT.Grass, TT.Grass, TT.Grass, TT.Grass, TT.Grass, new int[] { 94 }, "Hills Mine Covered Top", TT.Hills, TG.HillsTop),
 		};
 
 		tileWeights = new Dictionary<string, Dictionary<string, int>> {
